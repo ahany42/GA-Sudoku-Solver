@@ -10,22 +10,12 @@ Grid = List[List[int]]
 
 @dataclass
 class Individual:
-    """
-    One candidate Sudoku solution (chromosome).
-    Representation: each ROW is always valid (1..9) by construction.
-    Fixed cells (givens) are never changed.
-    """
     grid: Grid
     fitness: Optional[float] = None
 
     @classmethod
     def random_from_puzzle(cls, puzzle) -> "Individual":
-        """
-        Create a random individual that respects givens and makes each row a permutation of 1..9.
-        'puzzle' is expected to provide:
-          - puzzle.givens_grid (9x9, 0 for empty)
-          - puzzle.is_fixed(r, c) -> bool
-        """
+        
         grid: Grid = [[0] * 9 for _ in range(9)]
 
         for r in range(9):
@@ -52,10 +42,7 @@ class Individual:
         return Individual(grid=[row[:] for row in self.grid], fitness=self.fitness)
 
     def evaluate(self, puzzle) -> float:
-        """
-        Fitness computed by puzzle. Expected:
-          - puzzle.fitness(grid) -> float (higher is better)
-        """
+        
         self.fitness = puzzle.fitness(self.grid)
         return self.fitness
 

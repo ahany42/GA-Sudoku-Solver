@@ -20,7 +20,7 @@ class GAConfig:
     crossover_rate: float = 0.9
     mutation_rate: float = 0.2  
 
-    # stagnation controls
+    
     stagnation_limit: int = 250
     immigrants_rate: float = 0.10  
     mutation_boost: float = 1.5    
@@ -58,7 +58,7 @@ class GeneticAlgorithm:
         child_grid = []
         for r in range(9):
             src = p1 if random.random() < 0.5 else p2
-            child_grid.append(src.grid[r][:])  # copy row
+            child_grid.append(src.grid[r][:])  
         return Individual(grid=child_grid)
 
    
@@ -86,7 +86,7 @@ class GeneticAlgorithm:
         while True:
             gen += 1
 
-            # Stopping Condition
+            
             if not self.config.run_until_solved and gen > self.config.generations:
                 break
             if self.config.max_seconds is not None and (time.time() - start) > self.config.max_seconds:
@@ -138,6 +138,6 @@ class GeneticAlgorithm:
 
             self.population = new_pop
 
-        # Not solved within budget: return best found
+        
         self.population.sort(key=lambda x: x.fitness, reverse=True)
         return self.population[0], gen

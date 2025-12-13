@@ -9,14 +9,6 @@ Grid = List[List[int]]  # 9x9
 
 @dataclass(frozen=True)
 class SudokuPuzzle:
-    """
-    Holds the original Sudoku (givens) + provides fast fitness evaluation.
-
-    givens_grid:
-      - 9x9
-      - 0 means empty cell
-      - 1..9 are fixed givens
-    """
     givens_grid: Grid
 
     def __post_init__(self):
@@ -34,10 +26,6 @@ class SudokuPuzzle:
 
     @staticmethod
     def _conflicts_in_9(values: List[int]) -> int:
-        """
-        values length is 9. For Sudoku we expect 1..9.
-        Conflicts = 9 - number_of_unique_values.
-        """
         return 9 - len(set(values))
 
     def column_conflicts(self, grid: Grid) -> int:

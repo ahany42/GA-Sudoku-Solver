@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Tuple
 import random
+import time
 
 from individual import Individual
 from puzzle import SudokuPuzzle
@@ -11,7 +12,7 @@ from puzzle import SudokuPuzzle
 @dataclass
 class GAConfig:
     population_size: int = 300
-    generations: int = 5000
+    generations: int = 5000  # used when run_until_solved=False
 
     tournament_k: int = 3
     elitism_rate: float = 0.02  # keep top 2%
@@ -25,6 +26,10 @@ class GAConfig:
     mutation_boost: float = 1.5    # multiply mutation_rate when stuck
     mutation_rate_cap: float = 0.8
 
+    # run-until-solved controls (GUI uses these)
+    run_until_solved: bool = False
+    max_seconds: float = 60.0  # safety stop to avoid infinite running
+
 
 @dataclass
 class GeneticAlgorithm:
@@ -36,14 +41,16 @@ class GeneticAlgorithm:
     avg_history: List[float] = field(default_factory=list)
 
     def initialize(self) -> None:
-        self.population = [Individual.random_from_puzzle(self.puzzle) for _ in range(self.config.population_size)]
+        self.population = [
+            Individual.random_from_puzzle(self.puzzle)
+            for _ in range(self.config.population_size)
+        ]
         for ind in self.population:
             ind.evaluate(self.puzzle)
 
     # -------------------------
     # Selection
     # -------------------------
-
     def tournament_select(self) -> Individual:
         k = self.config.tournament_k
         contenders = random.sample(self.population, k)
@@ -52,30 +59,20 @@ class GeneticAlgorithm:
     # -------------------------
     # Crossover (row-wise)
     # -------------------------
-
     def crossover_row_uniform(self, p1: Individual, p2: Individual) -> Individual:
-        """
-        Row-uniform crossover:
-        for each row: take row from parent1 or parent2.
-        Rows remain valid permutations.
-        """
         child_grid = []
         for r in range(9):
             src = p1 if random.random() < 0.5 else p2
-            child_grid.append(src.grid[r][:])
+            child_grid.append(src.grid[r][:])  # copy row
         return Individual(grid=child_grid)
 
     # -------------------------
     # Elitism + replacement
     # -------------------------
-
     def _elitism_count(self) -> int:
         return max(1, int(self.config.elitism_rate * self.config.population_size))
 
     def _replace_with_immigrants(self, n: int) -> None:
-        """
-        Replace worst n individuals with fresh random individuals.
-        """
         self.population.sort(key=lambda x: x.fitness, reverse=True)
         immigrants = [Individual.random_from_puzzle(self.puzzle) for _ in range(n)]
         for ind in immigrants:
@@ -85,18 +82,27 @@ class GeneticAlgorithm:
     # -------------------------
     # Evolution loop
     # -------------------------
-
     def evolve(self) -> Tuple[Individual, int]:
         if not self.population:
             self.initialize()
 
-        best_so_far = max(self.population, key=lambda x: x.fitness)
-        best_fit = best_so_far.fitness
+        best_fit = max(self.population, key=lambda x: x.fitness).fitness
         no_improve = 0
         mutation_rate = self.config.mutation_rate
 
-        for gen in range(1, self.config.generations + 1):
-            # Sort by fitness (desc)
+        start = time.time()
+        gen = 0
+
+        while True:
+            gen += 1
+
+            # STOP CONDITIONS
+            if not self.config.run_until_solved and gen > self.config.generations:
+                break
+            if self.config.max_seconds is not None and (time.time() - start) > self.config.max_seconds:
+                break
+
+            # Sort by fitness (best first)
             self.population.sort(key=lambda x: x.fitness, reverse=True)
 
             # Track stats
@@ -105,14 +111,13 @@ class GeneticAlgorithm:
             self.best_history.append(best.fitness)
             self.avg_history.append(avg)
 
-            # Check solved
+            # Solved?
             if self.puzzle.is_solved(best.grid):
                 return best, gen
 
             # Improvement tracking
             if best.fitness > best_fit:
                 best_fit = best.fitness
-                best_so_far = best.copy()
                 no_improve = 0
                 mutation_rate = self.config.mutation_rate  # reset
             else:
@@ -120,11 +125,13 @@ class GeneticAlgorithm:
 
             # Handle stagnation
             if no_improve >= self.config.stagnation_limit:
-                # boost mutation + add immigrants
-                mutation_rate = min(self.config.mutation_rate_cap, mutation_rate * self.config.mutation_boost)
+                mutation_rate = min(
+                    self.config.mutation_rate_cap,
+                    mutation_rate * self.config.mutation_boost
+                )
                 immigrants_n = max(1, int(self.config.immigrants_rate * self.config.population_size))
                 self._replace_with_immigrants(immigrants_n)
-                no_improve = 0  # reset after intervention
+                no_improve = 0
 
             # Elites kept as-is
             elites_n = self._elitism_count()
@@ -148,6 +155,6 @@ class GeneticAlgorithm:
 
             self.population = new_pop
 
-        # not solved within limit, return best found
+        # Not solved within budget: return best found
         self.population.sort(key=lambda x: x.fitness, reverse=True)
-        return self.population[0], self.config.generations
+        return self.population[0], gen

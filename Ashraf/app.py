@@ -1,6 +1,5 @@
 # app.py
 import streamlit as st
-import numpy as np
 import matplotlib.pyplot as plt
 import time
 
@@ -8,7 +7,6 @@ from puzzle import SudokuPuzzle
 from genetic_algo import GeneticAlgorithm, GAConfig
 
 st.set_page_config(page_title="Sudoku GA Solver", layout="wide")
-
 
 # -----------------------
 # Helpers
@@ -36,7 +34,6 @@ def init_state():
 
 
 def clamp_cell(v):
-    # Allow empty or 0..9; Streamlit number_input returns int
     if v is None:
         return 0
     v = int(v)
@@ -45,16 +42,13 @@ def clamp_cell(v):
 
 def render_grid_editor(title, grid, editable=True, key_prefix="cell"):
     st.subheader(title)
-
-    # draw 9 rows each with 9 inputs
-    # We'll separate 3x3 blocks visually using columns + small separators.
     for r in range(9):
-        row_cols = st.columns([1,1,1,0.15,1,1,1,0.15,1,1,1], gap="small")
+        row_cols = st.columns(
+            [1, 1, 1, 0.15, 1, 1, 1, 0.15, 1, 1, 1], gap="small")
         for c in range(9):
-            col_index = c + (1 if c >= 3 else 0) + (1 if c >= 6 else 0)  # account for separators
+            col_index = c + (1 if c >= 3 else 0) + (1 if c >= 6 else 0)
             with row_cols[col_index]:
                 val = int(grid[r][c])
-                # Use number_input for strict numeric entry
                 new_val = st.number_input(
                     label=f"r{r+1}c{c+1}",
                     min_value=0,
@@ -67,33 +61,56 @@ def render_grid_editor(title, grid, editable=True, key_prefix="cell"):
                 )
                 grid[r][c] = clamp_cell(new_val)
 
-        # horizontal separator between 3-row blocks
         if r in (2, 5):
             st.markdown("---")
 
 
 def show_solution_grid(grid, givens):
-    # Show solved grid but highlight givens (bold) + others normal
-    # (Streamlit doesn't easily do per-cell styling without custom HTML,
-    #  so we show as a table-like markdown + also the numeric view.)
     st.subheader("Best Solution Found")
 
-    lines = []
+    # Build HTML table
+    html = """
+    <style>
+    .sudoku { border-collapse: collapse; margin-top: 10px; }
+    .sudoku td {
+        width: 46px; height: 46px;
+        text-align: center; vertical-align: middle;
+        font-size: 22px; font-weight: 600;
+        border: 1px solid #666;
+        border-radius: 6px;
+    }
+    .given { background: rgba(255,255,255,0.08); font-weight: 800; }
+    .thick-top    { border-top: 3px solid #aaa !important; }
+    .thick-left   { border-left: 3px solid #aaa !important; }
+    .thick-right  { border-right: 3px solid #aaa !important; }
+    .thick-bottom { border-bottom: 3px solid #aaa !important; }
+    </style>
+    <table class="sudoku">
+    """
+
     for r in range(9):
-        row_parts = []
+        html += "<tr>"
         for c in range(9):
-            v = grid[r][c]
+            classes = []
             if givens[r][c] != 0:
-                row_parts.append(f"**{v}**")
-            else:
-                row_parts.append(str(v))
-            if c in (2, 5):
-                row_parts.append("|")
-        line = " ".join(row_parts)
-        lines.append(line)
-        if r in (2, 5):
-            lines.append("---")
-    st.markdown("\n\n".join(lines))
+                classes.append("given")
+
+            # 3x3 borders
+            if r in (0, 3, 6):
+                classes.append("thick-top")
+            if c in (0, 3, 6):
+                classes.append("thick-left")
+            if r in (2, 5, 8):
+                classes.append("thick-bottom")
+            if c in (2, 5, 8):
+                classes.append("thick-right")
+
+            class_str = " ".join(classes)
+            html += f'<td class="{class_str}">{grid[r][c]}</td>'
+        html += "</tr>"
+    html += "</table>"
+
+    st.markdown(html, unsafe_allow_html=True)
 
 
 # -----------------------
@@ -126,7 +143,7 @@ with left:
 
     with colB:
         if st.button("Clear All", use_container_width=True):
-            st.session_state.givens = [[0]*9 for _ in range(9)]
+            st.session_state.givens = [[0] * 9 for _ in range(9)]
             st.session_state.solved_grid = None
             st.session_state.result_info = None
             st.rerun()
@@ -143,28 +160,49 @@ with left:
 with right:
     st.markdown("### 2) GA Settings")
 
-    pop = st.number_input("Population size", min_value=50, max_value=5000, value=400, step=50)
-    gens = st.number_input("Max generations", min_value=500, max_value=50000, value=12000, step=500)
-    tourn = st.number_input("Tournament k", min_value=2, max_value=10, value=3, step=1)
+    pop = st.number_input("Population size", min_value=50,
+                          max_value=5000, value=400, step=50)
+
+    run_until_solved = st.checkbox(
+        "Run until solved (0 conflicts)", value=False)
+    if run_until_solved:
+        st.caption("Note: This uses a time limit to avoid infinite running.")
+        max_seconds = st.number_input(
+            "Max runtime (seconds)", min_value=5, max_value=3600, value=60, step=5)
+        gens = st.number_input("Max generations (fallback)", min_value=500,
+                               max_value=50000, value=12000, step=500, disabled=True)
+    else:
+        max_seconds = st.number_input(
+            "Max runtime (seconds)", min_value=5, max_value=3600, value=60, step=5)
+        gens = st.number_input(
+            "Max generations", min_value=500, max_value=50000, value=12000, step=500)
+
+    tourn = st.number_input("Tournament k", min_value=2,
+                            max_value=10, value=3, step=1)
 
     elit = st.slider("Elitism rate", 0.0, 0.10, 0.02, 0.01)
     cross = st.slider("Crossover rate", 0.0, 1.0, 0.90, 0.01)
     mut = st.slider("Mutation rate", 0.0, 1.0, 0.20, 0.01)
 
     st.markdown("#### Stagnation Handling")
-    stag = st.number_input("Stagnation limit (gens)", min_value=50, max_value=5000, value=250, step=50)
+    stag = st.number_input("Stagnation limit (gens)",
+                           min_value=50, max_value=5000, value=250, step=50)
     imm = st.slider("Immigrants rate", 0.0, 0.50, 0.10, 0.01)
     boost = st.slider("Mutation boost", 1.0, 5.0, 1.5, 0.1)
     mut_cap = st.slider("Mutation rate cap", 0.0, 1.0, 0.80, 0.01)
 
-    solve_btn = st.button("🚀 Solve with GA", type="primary", use_container_width=True)
+    solve_btn = st.button("🚀 Solve with GA", type="primary",
+                          use_container_width=True)
 
     st.markdown("---")
 
     if solve_btn:
-        # Build puzzle + GA
         puzzle = SudokuPuzzle([row[:] for row in st.session_state.givens])
 
+        # IMPORTANT:
+        # This requires you to add these fields to GAConfig + evolve() logic:
+        #   run_until_solved: bool
+        #   max_seconds: float
         config = GAConfig(
             population_size=int(pop),
             generations=int(gens),
@@ -176,6 +214,8 @@ with right:
             immigrants_rate=float(imm),
             mutation_boost=float(boost),
             mutation_rate_cap=float(mut_cap),
+            run_until_solved=bool(run_until_solved),
+            max_seconds=float(max_seconds),
         )
 
         ga = GeneticAlgorithm(puzzle=puzzle, config=config)
@@ -183,10 +223,8 @@ with right:
         status = st.empty()
         prog = st.progress(0)
 
-        # Run GA (single run). We can only show results at the end
-        # unless you refactor GA to yield per-generation updates.
         start = time.time()
-        status.info("Running GA... (this may take a bit depending on settings)")
+        status.info("Running GA...")
 
         best, gen_found = ga.evolve()
 
@@ -205,25 +243,29 @@ with right:
         }
 
         prog.progress(100)
-        status.success(f"Done in {elapsed:.2f}s | Best gen: {gen_found} | Conflicts: {conflicts} | Fitness: {fitness:.6f}")
+        status.success(
+            f"Done in {elapsed:.2f}s | Best gen: {gen_found} | Conflicts: {conflicts} | Fitness: {fitness:.6f}"
+        )
 
-    # Show results if available
+    # Results
     if st.session_state.solved_grid is not None:
         info = st.session_state.result_info
+
         st.markdown("### 3) Results")
         st.write(f"**Best generation:** {info['gen_found']}")
+        st.write(f"**Runtime:** {info['elapsed']:.2f}s")
         st.write(f"**Conflicts:** {info['conflicts']}")
         st.write(f"**Fitness:** {info['fitness']:.6f}")
 
         if info["conflicts"] == 0:
             st.success("✅ Perfect Sudoku solution found!")
         else:
-            st.warning("Not perfect yet — increase generations/population or add local repair later.")
+            st.warning(
+                "Not perfect yet. Increase runtime / population, or add local repair.")
 
-        # Solution grid display
-        show_solution_grid(st.session_state.solved_grid, st.session_state.givens)
+        show_solution_grid(st.session_state.solved_grid,
+                           st.session_state.givens)
 
-        # Plot
         st.markdown("### Fitness Progress")
         fig = plt.figure()
         plt.plot(info["best_history"], label="Best fitness")

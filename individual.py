@@ -5,7 +5,7 @@ from typing import List, Optional
 import random
 
 
-Grid = List[List[int]]  # 9x9
+Grid = List[List[int]] 
 
 
 @dataclass
@@ -59,15 +59,10 @@ class Individual:
         self.fitness = puzzle.fitness(self.grid)
         return self.fitness
 
-    # -------------------------
-    # Mutations (safe by design)
-    # -------------------------
+  
 
     def mutate_swap_in_row(self, puzzle, row: Optional[int] = None) -> None:
-        """
-        Pick a row and swap two non-fixed cells in that row.
-        Keeps row valid always.
-        """
+       
         r = random.randrange(9) if row is None else row
 
         mutable_cols = [c for c in range(9) if not puzzle.is_fixed(r, c)]
@@ -79,10 +74,7 @@ class Individual:
         self.fitness = None
 
     def mutate_scramble_in_row(self, puzzle, row: Optional[int] = None, k: int = 4) -> None:
-        """
-        Pick a row and scramble values among k non-fixed positions.
-        Stronger than swap; useful when stuck.
-        """
+     
         r = random.randrange(9) if row is None else row
 
         mutable_cols = [c for c in range(9) if not puzzle.is_fixed(r, c)]
@@ -100,22 +92,15 @@ class Individual:
         self.fitness = None
 
     def mutate(self, puzzle, p_swap: float = 0.8) -> None:
-        """
-        Combined mutation operator:
-          - with probability p_swap: swap mutation
-          - else: scramble mutation
-        """
+      
         if random.random() < p_swap:
             self.mutate_swap_in_row(puzzle)
         else:
             self.mutate_scramble_in_row(puzzle)
 
-    # -------------------------
-    # Optional: quick validation
-    # -------------------------
+   
 
     def respects_givens(self, puzzle) -> bool:
-        """Sanity check: fixed cells equal original givens."""
         for r in range(9):
             for c in range(9):
                 if puzzle.is_fixed(r, c) and self.grid[r][c] != puzzle.givens_grid[r][c]:

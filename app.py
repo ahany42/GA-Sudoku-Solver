@@ -1,4 +1,3 @@
-# app.py
 import streamlit as st
 import matplotlib.pyplot as plt
 import time
@@ -8,9 +7,7 @@ from genetic_algo import GeneticAlgorithm, GAConfig
 
 st.set_page_config(page_title="Sudoku GA Solver", layout="wide")
 
-# -----------------------
-# Helpers
-# -----------------------
+
 DEFAULT_GIVENS = [
     [5, 3, 0, 0, 7, 0, 0, 0, 0],
     [6, 0, 0, 1, 9, 5, 0, 0, 0],
@@ -68,7 +65,6 @@ def render_grid_editor(title, grid, editable=True, key_prefix="cell"):
 def show_solution_grid(grid, givens):
     st.subheader("Best Solution Found")
 
-    # Build HTML table
     html = """
     <style>
     .sudoku { border-collapse: collapse; margin-top: 10px; }
@@ -113,12 +109,9 @@ def show_solution_grid(grid, givens):
     st.markdown(html, unsafe_allow_html=True)
 
 
-# -----------------------
-# UI
-# -----------------------
 init_state()
 
-st.title("🧬 Sudoku Solver with Genetic Algorithm (Streamlit GUI)")
+st.title("🧬 Sudoku Solver with Genetic Algorithm")
 
 left, right = st.columns([1.15, 1], gap="large")
 
@@ -133,29 +126,7 @@ with left:
         key_prefix="given",
     )
 
-    colA, colB, colC = st.columns(3)
-    with colA:
-        if st.button("Reset to Default", use_container_width=True):
-            st.session_state.givens = [row[:] for row in DEFAULT_GIVENS]
-            st.session_state.solved_grid = None
-            st.session_state.result_info = None
-            st.rerun()
-
-    with colB:
-        if st.button("Clear All", use_container_width=True):
-            st.session_state.givens = [[0] * 9 for _ in range(9)]
-            st.session_state.solved_grid = None
-            st.session_state.result_info = None
-            st.rerun()
-
-    with colC:
-        st.download_button(
-            "Download Givens (CSV)",
-            data="\n".join(",".join(map(str, row)) for row in givens),
-            file_name="givens.csv",
-            mime="text/csv",
-            use_container_width=True,
-        )
+   
 
 with right:
     st.markdown("### 2) GA Settings")
@@ -199,10 +170,7 @@ with right:
     if solve_btn:
         puzzle = SudokuPuzzle([row[:] for row in st.session_state.givens])
 
-        # IMPORTANT:
-        # This requires you to add these fields to GAConfig + evolve() logic:
-        #   run_until_solved: bool
-        #   max_seconds: float
+       
         config = GAConfig(
             population_size=int(pop),
             generations=int(gens),
@@ -247,7 +215,6 @@ with right:
             f"Done in {elapsed:.2f}s | Best gen: {gen_found} | Conflicts: {conflicts} | Fitness: {fitness:.6f}"
         )
 
-    # Results
     if st.session_state.solved_grid is not None:
         info = st.session_state.result_info
 

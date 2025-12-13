@@ -31,9 +31,6 @@ class SudokuPuzzle:
     def is_fixed(self, r: int, c: int) -> bool:
         return self.givens_grid[r][c] != 0
 
-    # -------------------------
-    # Fitness (higher is better)
-    # -------------------------
 
     @staticmethod
     def _conflicts_in_9(values: List[int]) -> int:
@@ -62,27 +59,20 @@ class SudokuPuzzle:
         return total
 
     def total_conflicts(self, grid: Grid) -> int:
-        # Rows are always valid by construction (in our representation),
-        # so we only count column + box conflicts.
+    
         return self.column_conflicts(grid) + self.box_conflicts(grid)
 
     def fitness(self, grid: Grid) -> float:
-        """
-        Convert conflicts to a 'higher is better' score.
-        Perfect solution => conflicts = 0 => fitness = 1.0
-        """
+        
         conflicts = self.total_conflicts(grid)
         return 1.0 / (1.0 + conflicts)
 
-    # -------------------------
-    # Optional helpers
-    # -------------------------
+  
 
     def is_solved(self, grid: Grid) -> bool:
         return self.total_conflicts(grid) == 0
 
     def pretty(self, grid: Grid) -> str:
-        """Nice printing for console debugging."""
         lines = []
         for r in range(9):
             if r in (3, 6):

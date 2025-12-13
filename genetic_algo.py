@@ -12,23 +12,22 @@ from puzzle import SudokuPuzzle
 @dataclass
 class GAConfig:
     population_size: int = 300
-    generations: int = 5000  # used when run_until_solved=False
+    generations: int = 5000 
 
     tournament_k: int = 3
-    elitism_rate: float = 0.02  # keep top 2%
+    elitism_rate: float = 0.02  
 
     crossover_rate: float = 0.9
-    mutation_rate: float = 0.2  # per-child mutation probability
+    mutation_rate: float = 0.2  
 
     # stagnation controls
     stagnation_limit: int = 250
-    immigrants_rate: float = 0.10  # replace worst 10% when stuck
-    mutation_boost: float = 1.5    # multiply mutation_rate when stuck
+    immigrants_rate: float = 0.10  
+    mutation_boost: float = 1.5    
     mutation_rate_cap: float = 0.8
 
-    # run-until-solved controls (GUI uses these)
     run_until_solved: bool = False
-    max_seconds: float = 60.0  # safety stop to avoid infinite running
+    max_seconds: float = 60.0 
 
 
 @dataclass
@@ -48,17 +47,13 @@ class GeneticAlgorithm:
         for ind in self.population:
             ind.evaluate(self.puzzle)
 
-    # -------------------------
-    # Selection
-    # -------------------------
+
     def tournament_select(self) -> Individual:
         k = self.config.tournament_k
         contenders = random.sample(self.population, k)
         return max(contenders, key=lambda x: x.fitness if x.fitness is not None else -1)
 
-    # -------------------------
-    # Crossover (row-wise)
-    # -------------------------
+
     def crossover_row_uniform(self, p1: Individual, p2: Individual) -> Individual:
         child_grid = []
         for r in range(9):
@@ -66,9 +61,7 @@ class GeneticAlgorithm:
             child_grid.append(src.grid[r][:])  # copy row
         return Individual(grid=child_grid)
 
-    # -------------------------
-    # Elitism + replacement
-    # -------------------------
+   
     def _elitism_count(self) -> int:
         return max(1, int(self.config.elitism_rate * self.config.population_size))
 
@@ -79,9 +72,6 @@ class GeneticAlgorithm:
             ind.evaluate(self.puzzle)
         self.population[-n:] = immigrants
 
-    # -------------------------
-    # Evolution loop
-    # -------------------------
     def evolve(self) -> Tuple[Individual, int]:
         if not self.population:
             self.initialize()
@@ -96,26 +86,22 @@ class GeneticAlgorithm:
         while True:
             gen += 1
 
-            # STOP CONDITIONS
+            # Stopping Condition
             if not self.config.run_until_solved and gen > self.config.generations:
                 break
             if self.config.max_seconds is not None and (time.time() - start) > self.config.max_seconds:
                 break
 
-            # Sort by fitness (best first)
             self.population.sort(key=lambda x: x.fitness, reverse=True)
 
-            # Track stats
             best = self.population[0]
             avg = sum(ind.fitness for ind in self.population) / len(self.population)
             self.best_history.append(best.fitness)
             self.avg_history.append(avg)
 
-            # Solved?
             if self.puzzle.is_solved(best.grid):
                 return best, gen
 
-            # Improvement tracking
             if best.fitness > best_fit:
                 best_fit = best.fitness
                 no_improve = 0
@@ -123,7 +109,6 @@ class GeneticAlgorithm:
             else:
                 no_improve += 1
 
-            # Handle stagnation
             if no_improve >= self.config.stagnation_limit:
                 mutation_rate = min(
                     self.config.mutation_rate_cap,
@@ -133,11 +118,9 @@ class GeneticAlgorithm:
                 self._replace_with_immigrants(immigrants_n)
                 no_improve = 0
 
-            # Elites kept as-is
             elites_n = self._elitism_count()
             new_pop = [self.population[i].copy() for i in range(elites_n)]
 
-            # Create rest of population
             while len(new_pop) < self.config.population_size:
                 parent1 = self.tournament_select()
                 parent2 = self.tournament_select()

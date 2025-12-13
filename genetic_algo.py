@@ -1,4 +1,3 @@
-# genetic_algo.py
 from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Tuple
@@ -105,7 +104,7 @@ class GeneticAlgorithm:
             if best.fitness > best_fit:
                 best_fit = best.fitness
                 no_improve = 0
-                mutation_rate = self.config.mutation_rate  # reset
+                mutation_rate = self.config.mutation_rate  
             else:
                 no_improve += 1
 

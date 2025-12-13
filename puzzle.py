@@ -1,10 +1,9 @@
-# puzzle.py
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import List
 
 
-Grid = List[List[int]]  # 9x9
+Grid = List[List[int]]  
 
 
 @dataclass(frozen=True)

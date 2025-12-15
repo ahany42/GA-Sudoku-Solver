@@ -1,6 +1,6 @@
 # 🧬 GA‑Sudoku‑Solver
 
-A Sudoku solver implemented using a **Genetic Algorithm (GA)**, with both a **command-line interface** and a **Streamlit web app** for interactive puzzle input, GA configuration, and results visualization.
+A Sudoku solver implemented using Genetic Algorithms, with Streamlit web app for interactive puzzle input, GA configuration, and results visualization.
 
 ---
 

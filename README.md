@@ -78,3 +78,5 @@ Implements evolutionary loop with:
 ✔ Adaptive mutation & stagnation
 
 ✔ Immigrants injection
+
+<img src="/Images/image 1.png"/>
